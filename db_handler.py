@@ -103,6 +103,11 @@ def edit_customer(original_customer_id: str = None, new_customer: Customer = Non
         params.append(original_customer_id)
         cur.execute(f"UPDATE customer SET {', '.join(update_parts)} WHERE c_customer_id = ?", params)
 
+    if new_customer.customer_id:
+        cur.execute("UPDATE customer SET c_customer_id = ? WHERE c_customer_id = ?", 
+                    (new_customer.customer_id, original_customer_id))
+        original_customer_id = new_customer.customer_id
+
     if new_customer.address:
         cur.execute("SELECT c_current_addr_sk FROM customer WHERE c_customer_id = ?", (original_customer_id,))
         addr_sk = cur.fetchone()[0]
@@ -249,6 +254,11 @@ def get_filtered_customers(filter_attributes: Customer = None, use_patterns: boo
     """
     Returns a list of Customer objects matching the filters.
     """
+    query = """SELECT c.c_customer_id, CONCAT(c.c_first_name, ' ', c.c_last_name),
+                      CONCAT(ca.ca_street_number, ' ', ca.ca_street_name, ', ', ca.ca_city, ', ', ca.ca_state, ' ', ca.ca_zip), c.c_email_address 
+               FROM customer c
+               JOIN customer_address ca ON c.c_current_addr_sk = ca.ca_address_sk
+               WHERE 1=1"""
     params = []
     op = "LIKE" if use_patterns else "="
 
@@ -267,7 +277,6 @@ def get_filtered_customers(filter_attributes: Customer = None, use_patterns: boo
         params.append(filter_attributes.address)
 
     cur.execute(query, params)
-
     return [Customer(row[0].strip(), row[1].strip(), row[2].strip(), row[3].strip()) 
             for row in cur.fetchall()]
 
@@ -280,7 +289,37 @@ def get_filtered_rentals(filter_attributes: Rental = None,
     """
     Returns a list of Rental objects matching the filters.
     """
-    raise NotImplementedError("you must implement this function")
+    query = "SELECT item_id, customer_id, rental_date, due_date FROM rental WHERE 1=1"
+    params = []
+
+    if filter_attributes.item_id:
+        query += " AND item_id = ?"
+        params.append(filter_attributes.item_id)
+    if filter_attributes.customer_id:
+        query += " AND customer_id = ?"
+        params.append(filter_attributes.customer_id)
+    if filter_attributes.rental_date:
+        query += " AND rental_date = ?"
+        params.append(filter_attributes.rental_date)
+    if filter_attributes.due_date:
+        query += " AND due_date = ?"
+        params.append(filter_attributes.due_date)
+    if min_rental_date:
+        query += " AND rental_date >= ?"
+        params.append(min_rental_date)
+    if max_rental_date:
+        query += " AND rental_date <= ?"
+        params.append(max_rental_date)
+    if min_due_date:
+        query += " AND due_date >= ?"
+        params.append(min_due_date)
+    if max_due_date:
+        query += " AND due_date <= ?"
+        params.append(max_due_date)
+    
+    cur.execute(query, params)
+    return [Rental(str(r[0]).strip(), str(r[1]).strip(), str(r[2]), str(r[3]))
+            for r in cur.fetchall()]
 
 
 def get_filtered_rental_histories(filter_attributes: RentalHistory = None,
@@ -293,8 +332,46 @@ def get_filtered_rental_histories(filter_attributes: RentalHistory = None,
     """
     Returns a list of RentalHistory objects matching the filters.
     """
-    raise NotImplementedError("you must implement this function")
+    query = "SELECT item_id, customer_id, rental_date, due_date, return_date FROM rental_history WHERE 1=1"
+    params = []
 
+    if filter_attributes.item_id:
+        query += " AND item_id = ?"
+        params.append(filter_attributes.item_id)
+    if filter_attributes.customer_id:
+        query += " AND customer_id = ?"
+        params.append(filter_attributes.customer_id)
+    if filter_attributes.rental_date:
+        query += " AND rental_date = ?"
+        params.append(filter_attributes.rental_date)
+    if filter_attributes.due_date:
+        query += " AND due_date = ?"
+        params.append(filter_attributes.due_date)
+    if filter_attributes.return_date:
+        query += " AND return_date = ?"
+        params.append(filter_attributes.return_date)
+    if min_rental_date:
+        query += " AND rental_date >= ?"
+        params.append(min_rental_date)
+    if max_rental_date:
+        query += " AND rental_date <= ?"
+        params.append(max_rental_date)
+    if min_due_date:
+        query += " AND due_date >= ?"
+        params.append(min_due_date)
+    if max_due_date:
+        query += " AND due_date <= ?"
+        params.append(max_due_date)
+    if min_return_date:
+        query += " AND return_date >= ?"
+        params.append(min_return_date)
+    if max_return_date:
+        query += " AND return_date <= ?"
+        params.append(max_return_date)
+
+    cur.execute(query, params)
+    return [RentalHistory(str(r[0]).strip(), str(r[1]).strip(), str(r[2]), str(r[3]), str(r[4]))
+            for r in cur.fetchall()]
 
 def get_filtered_waitlist(filter_attributes: Waitlist = None,
                           min_place_in_line: int = -1,
@@ -302,7 +379,25 @@ def get_filtered_waitlist(filter_attributes: Waitlist = None,
     """
     Returns a list of Waitlist objects matching the filters.
     """
-    raise NotImplementedError("you must implement this function")
+    query = "SELECT item_id, customer_id, place_in_line FROM waitlist WHERE 1=1"
+    params = []
+
+    if filter_attributes.item_id:
+        query += " AND item_id = ?"
+        params.append(filter_attributes.item_id)
+    if filter_attributes.customer_id:
+        query += " AND customer_id = ?"
+        params.append(filter_attributes.customer_id)
+    if min_place_in_line != -1:
+        query += " AND place_in_line >= ?"
+        params.append(min_place_in_line)
+    if max_place_in_line != -1:
+        query += " AND place_in_line <= ?"
+        params.append(max_place_in_line)
+
+    cur.execute(query, params)
+    return [Waitlist(str(r[0]).strip(), str(r[1]).strip(), int(r[2]))
+            for r in cur.fetchall()]
 
 
 def number_in_stock(item_id: str = None) -> int:
