@@ -130,33 +130,53 @@ def number_in_stock(item_id: str = None) -> int:
     """
     Returns num_owned - active rentals. Returns -1 if item doesn't exist.
     """
-    raise NotImplementedError("you must implement this function")
+    query_owned = "SELECT i_num_owned FROM item WHERE i_item_id = ?"
+    cur.execute(query_owned, (item_id,))
+    result = cur.fetchone()
+    
+    if result is None:
+        return -1
+    
+    num_owned = result[0]
+
+    query_rented = "SELECT COUNT(*) FROM rental WHERE item_id = ?"
+    cur.execute(query_rented, (item_id,))
+    num_rented = cur.fetchone()[0]
+
+    return num_owned - num_rented
 
 
 def place_in_line(item_id: str = None, customer_id: str = None) -> int:
     """
     Returns the customer's place_in_line, or -1 if not on waitlist.
     """
-    raise NotImplementedError("you must implement this function")
+    query = "SELECT place_in_line FROM waitlist WHERE item_id = ? AND customer_id = ?"
+    cur.execute(query, (item_id, customer_id))
+    result = cur.fetchone()
+    return result[0] if result else -1
 
 
 def line_length(item_id: str = None) -> int:
     """
     Returns how many people are on the waitlist for this item.
     """
-    raise NotImplementedError("you must implement this function")
+    query = "SELECT COUNT(*) FROM waitlist WHERE item_id = ?"
+    cur.execute(query, (item_id,))
+    result = cur.fetchone()
+    return result[0] if result else 0
 
 
 def save_changes():
     """
     Commits all changes made to the db.
     """
-    raise NotImplementedError("you must implement this function")
+    conn.commit()
 
 
 def close_connection():
     """
     Closes the cursor and connection.
     """
-    raise NotImplementedError("you must implement this function")
+    cur.close()
+    conn.close()
 
